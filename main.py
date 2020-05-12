@@ -90,31 +90,3 @@ if __name__ == "__main__":
                     output_file.write(content)
                     print("Decoded: " + paths.resolve().as_posix()[:-4])
 
-
-# with open("Meme.jpg", "rb") as input_file, open("Meme2.jpg", "wb") as output_file:
-#     password="hello"
-#     msg = "I love python asdasdasda"
-#     hashObj = SHA256.new(password.encode('utf-8'))                                
-#     hkey = hashObj.digest()
-#     msg = ""
-#     for byte in input_file.read():
-#         msg += str(byte) + " "
-#     msg = msg[:-1]
-#     #debugfile.write(msg + "\n\n\n\n\n\n\n")
-#     encoded = encrypt(hkey, msg)
-#     #print(type(encoded))                                                                                                                                         
-#     output_file.write(encoded)
-
-# with open("Meme2.jpg", "rb") as input_file, open("Meme3.jpg", "wb") as output_file:
-#     password="hello"
-#     msg = "I love python asdasdasda"
-#     hashObj = SHA256.new(password.encode('utf-8'))
-#     hkey = hashObj.digest()
-#     encoded = decrypt(hkey, input_file.read())
-#     #debugfile.write(encoded + "\n\n\n\n\n\n\n")
-#     msg = b''
-#     for byte in encoded.split():
-#         msg += int(byte).to_bytes(1,'big')
-#     #print(bytes(encoded))
-#     #print(type(encoded))
-#     output_file.write(msg)
