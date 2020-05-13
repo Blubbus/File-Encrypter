@@ -6,35 +6,71 @@ import concurrent.futures
 
 
 def encryptFile(filePath, password):
-    print("getti exec")
-    logging.info("get exec")
+    logging.info("Started encoding: " + filePath.resolve().as_posix())
     hashObj = SHA256.new(password.encode('utf-8'))
     hkey = hashObj.digest()
-    with open(filePath, "rb") as input_file, open(filePath.resolve().as_posix() +".enc", "wb") as output_file:
+    with open(filePath, "rb") as input_file, open(filePath.resolve().as_posix() +".enc", "ab") as output_file:
         content = ""
-        for byte in input_file.read():
-            content += str(byte) + " "
-        content = content[:-1]
-        encoded = encrypt(hkey, content)
-        output_file.write(encoded)
+        content = input_file.read(16*100)
+        #print(content)
+        j = 0
+        hand = open("debug.txt", "a")
+        while  content != b'':       
+            #print("iter")
+            i=0
+            encoded = ""
+            for byte in content:
+                if "73" in str(byte) and j==4:
+                    print("test")
+                encoded += str(byte) + " "
+                i+=1
+            #encoded = encoded[:-1] # to remove last " "
+            
+            hand.write(encoded + "\n")
+            encoded = encrypt(hkey, encoded)
+            output_file.write(encoded)
+            #print(content)
+            content = input_file.read(16*100)
+            j+=1
+
         logging.info("Encoded " + filePath.resolve().as_posix())
 
 def decryptFile(filePath, password):
-    hashObj = SHA256.new(password.encode('utf-8'))
-    hkey = hashObj.digest()
-    with filePath.open("rb") as input_file, open(filePath.resolve().as_posix()[:-4], "wb") as output_file:
-        decoded = decrypt(hkey, input_file.read())
-        content = b''
-        for byte in decoded.split():
-            content += int(byte).to_bytes(1, 'big')
-        output_file.write(content)
-        
+    i = 0
+    j= 0
+    try:
+        hashObj = SHA256.new(password.encode('utf-8'))
+        hkey = hashObj.digest()
+        with filePath.open("rb") as input_file, open(filePath.resolve().as_posix()[:-4], "ab") as output_file:
+            values = input_file.read(16*100)
+            while values != b'':
+                
+                print(i)
+                i+= 1
+                decoded = decrypt(hkey, values)
+                content = b''
+                hand = open("debug2.txt", "a")
+                hand.write(decoded +"\n")
+                hand.close()
+                for byte in decoded.split():
+                    content += int(byte).to_bytes(1, 'big')
+                output_file.write(content)
+                values = input_file.read(16*100)
+                j+= 1
+            
         logging.info("Decoded: " + filePath.resolve().as_posix()[:-4])
 
+    except Exception as e:
+        print(i)
+        print(j)
+        print(e)
+    
 def pad(msg, BLOCK_SIZE, PAD):
+    print("Applied " + str((BLOCK_SIZE - len(msg) % BLOCK_SIZE)))
     return msg.encode('utf-8') + PAD * (BLOCK_SIZE - len(msg) % BLOCK_SIZE)
 
 def encrypt(key, msg):
+    print("Encrypt")
     BLOCK_SIZE = 16
     PAD = b'\0'
     cipher = AES.new(key, AES.MODE_ECB)
