@@ -2,11 +2,15 @@ from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from pathlib import Path
 import logging
+import concurrent.futures
+
 
 def encryptFile(filePath, password):
+    print("getti exec")
+    logging.info("get exec")
     hashObj = SHA256.new(password.encode('utf-8'))
     hkey = hashObj.digest()
-    with filePath.open("rb") as input_file, open(filePath.resolve().as_posix() +".enc", "wb") as output_file:
+    with open(filePath, "rb") as input_file, open(filePath.resolve().as_posix() +".enc", "wb") as output_file:
         content = ""
         for byte in input_file.read():
             content += str(byte) + " "
@@ -21,9 +25,7 @@ def decryptFile(filePath, password):
     with filePath.open("rb") as input_file, open(filePath.resolve().as_posix()[:-4], "wb") as output_file:
         decoded = decrypt(hkey, input_file.read())
         content = b''
-
         for byte in decoded.split():
-
             content += int(byte).to_bytes(1, 'big')
         output_file.write(content)
         
@@ -73,6 +75,7 @@ def getTargetFiles(fileExtension):
         fileExtensionFormatted += formatted
     return fileExtensionFormatted
 
+
 if __name__ == "__main__":
     format = "%(asctime)s: %(message)s"
     logging.basicConfig(format=format, level=logging.INFO,
@@ -84,20 +87,20 @@ if __name__ == "__main__":
     if password != passwordConfirm:
         logging.error("Passwords not matching")
         exit()
-    
 
     if mode == 1:
         fileExtensions = input("Enter file extensions (jpg png ...): ").split()
         fileExtensionFormatted = getTargetFiles(fileExtensions)
         logging.debug("Using " + fileExtensionFormatted)
         filePaths = list(Path(".").rglob(fileExtensionFormatted))
-        for filePath in filePaths:
-            encryptFile(filePath, password)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor: 
+            for filePath in filePaths:
+                executor.submit(encryptFile, *(filePath, password))
         
     elif mode == 2:
         filePaths = list(Path(".").rglob("*.[eE][nN][cC]"))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor: 
+            for filePath in filePaths:
+                executor.submit(decryptFile, *(filePath, password))
         
-        for filePath in filePaths:
-            print(filePath.resolve().as_posix())
-            decryptFile(filePath, password)
 
