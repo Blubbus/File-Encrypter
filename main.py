@@ -6,68 +6,43 @@ import concurrent.futures
 
 
 def encryptFile(filePath, password):
-    logging.info("Started encoding: " + filePath.resolve().as_posix())
-    hashObj = SHA256.new(password.encode('utf-8'))
-    hkey = hashObj.digest()
-    with open(filePath, "rb") as input_file, open(filePath.resolve().as_posix() +".enc", "ab") as output_file:
-        content = ""
-        content = input_file.read(16*100)
-        #print(content)
-        j = 0
-        hand = open("debug.txt", "a")
-        while  content != b'':       
-            #print("iter")
-            i=0
-            encoded = ""
-            for byte in content:
-                if "73" in str(byte) and j==4:
-                    print("test")
-                encoded += str(byte) + " "
-                i+=1
-            #encoded = encoded[:-1] # to remove last " "
-            
-            hand.write(encoded + "\n")
-            encoded = encrypt(hkey, encoded)
-            output_file.write(encoded)
-            #print(content)
+    try:
+        logging.info("Started encoding: " + filePath.resolve().as_posix())
+        hashObj = SHA256.new(password.encode('utf-8'))
+        hkey = hashObj.digest()
+        with open(filePath, "rb") as input_file, open(filePath.resolve().as_posix() +".enc", "ab") as output_file:
+            content = b''
             content = input_file.read(16*100)
-            j+=1
+            
+            while content != b'':       
+                output_file.write(encrypt(hkey, content))
+                content = input_file.read(16*100)
 
-        logging.info("Encoded " + filePath.resolve().as_posix())
+            logging.info("Encoded " + filePath.resolve().as_posix())
+    except Exception as e:
+
+        print(e)
 
 def decryptFile(filePath, password):
-    i = 0
-    j= 0
+    logging.info("Started decoding: " + filePath.resolve().as_posix())
     try:
         hashObj = SHA256.new(password.encode('utf-8'))
         hkey = hashObj.digest()
         with filePath.open("rb") as input_file, open(filePath.resolve().as_posix()[:-4], "ab") as output_file:
-            values = input_file.read(16*100)
+            values = input_file.read(16*100)       
             while values != b'':
-                
-                print(i)
-                i+= 1
-                decoded = decrypt(hkey, values)
-                content = b''
-                hand = open("debug2.txt", "a")
-                hand.write(decoded +"\n")
-                hand.close()
-                for byte in decoded.split():
-                    content += int(byte).to_bytes(1, 'big')
-                output_file.write(content)
+                output_file.write(decrypt(hkey, values))
                 values = input_file.read(16*100)
-                j+= 1
             
         logging.info("Decoded: " + filePath.resolve().as_posix()[:-4])
 
     except Exception as e:
-        print(i)
-        print(j)
         print(e)
     
 def pad(msg, BLOCK_SIZE, PAD):
-    print("Applied " + str((BLOCK_SIZE - len(msg) % BLOCK_SIZE)))
-    return msg.encode('utf-8') + PAD * (BLOCK_SIZE - len(msg) % BLOCK_SIZE)
+    #print("Applied " + str((BLOCK_SIZE - len(msg) % BLOCK_SIZE) % BLOCK_SIZE))
+    #print("len: " + str(len(msg)) + "\n")
+    return msg + PAD * ((BLOCK_SIZE - len(msg) % BLOCK_SIZE) % BLOCK_SIZE)
 
 def encrypt(key, msg):
     print("Encrypt")
@@ -81,9 +56,9 @@ def encrypt(key, msg):
 def decrypt(key, msg):
     PAD = b'\0'                         
     decipher = AES.new(key, AES.MODE_ECB)
-    pt = decipher.decrypt(msg).decode('utf-8')
+    pt = decipher.decrypt(msg)
     for i in range(len(pt)-1, -1, -1):
-        if pt[i].encode('utf-8') == PAD:
+        if pt[i] == PAD:
            # print("HIT")
             pt = pt[:i]
         else:
