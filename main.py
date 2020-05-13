@@ -1,14 +1,53 @@
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from pathlib import Path
+import logging
+import concurrent.futures
 
+BLOCK_SIZE = 16
+BLOCK_MULTIPLIER = 100
 
+def encryptFile(filePath, password):
+    try:
+        logging.info("Started encoding: " + filePath.resolve().as_posix())
+        hashObj = SHA256.new(password.encode('utf-8'))
+        hkey = hashObj.digest()
+        with open(filePath, "rb") as input_file, open(filePath.resolve().as_posix() +".enc", "ab") as output_file:
+            content = b''
+            content = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
+            
+            while content != b'':       
+                output_file.write(encrypt(hkey, content))
+                content = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
 
+            logging.info("Encoded " + filePath.resolve().as_posix())
+    except Exception as e:
+
+        print(e)
+
+def decryptFile(filePath, password):
+    logging.info("Started decoding: " + filePath.resolve().as_posix())
+    try:
+        hashObj = SHA256.new(password.encode('utf-8'))
+        hkey = hashObj.digest()
+        with filePath.open("rb") as input_file, open(filePath.resolve().as_posix()[:-4], "ab") as output_file:
+            values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)       
+            while values != b'':
+                output_file.write(decrypt(hkey, values))
+                values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
+            
+        logging.info("Decoded: " + filePath.resolve().as_posix()[:-4])
+
+    except Exception as e:
+        print(e)
+    
 def pad(msg, BLOCK_SIZE, PAD):
-    return msg.encode('utf-8') + PAD * (BLOCK_SIZE - len(msg) % BLOCK_SIZE)
+    #print("Applied " + str((BLOCK_SIZE - len(msg) % BLOCK_SIZE) % BLOCK_SIZE))
+    #print("len: " + str(len(msg)) + "\n")
+    return msg + PAD * ((BLOCK_SIZE - len(msg) % BLOCK_SIZE) % BLOCK_SIZE)
 
 def encrypt(key, msg):
-    BLOCK_SIZE = 16
+    print("Encrypt")
     PAD = b'\0'
     cipher = AES.new(key, AES.MODE_ECB)
     # print("KEY " + str(AES.block_size))
@@ -18,11 +57,9 @@ def encrypt(key, msg):
 def decrypt(key, msg):
     PAD = b'\0'                         
     decipher = AES.new(key, AES.MODE_ECB)
-    pt = decipher.decrypt(msg).decode('utf-8')
+    pt = decipher.decrypt(msg)
     for i in range(len(pt)-1, -1, -1):
-        if pt[i].replace(" ", "") == "":
-            continue
-        if pt[i].encode('utf-8') == PAD:
+        if pt[i] == PAD:
            # print("HIT")
             pt = pt[:i]
         else:
@@ -37,84 +74,45 @@ def getMaxLen(arr):
             maxLen = len(elem)
     return maxLen
 
+def getTargetFiles(fileExtension):
+    fileExtensionFormatted = "*."
+    if len(fileExtension) == 0:
+        fileExtensionFormatted = "*"
+    for i in range(0, getMaxLen(fileExtension)):
+        formatted = "["
+        for extension in  fileExtension:
+            if len(extension) > i:
+                formatted += extension[i]
+        formatted += "]"
+        fileExtensionFormatted += formatted
+    return fileExtensionFormatted
+
+
 if __name__ == "__main__":
+    format = "%(asctime)s: %(message)s"
+    logging.basicConfig(format=format, level=logging.INFO,
+                        datefmt="%H:%M:%S")
     print("(1) - encrypt\n(2) - decrypt")
     mode = int(input("---> "))
+    password = input("password: ")
+    passwordConfirm = input("confirm password: ")
+    if password != passwordConfirm:
+        logging.error("Passwords not matching")
+        exit()
+
     if mode == 1:
-        password = input("password: ")
-        passwordConfirm = input("confirm password: ")
-        fileExtension = input("Enter file extensions (jpg png ...): ").split()
-        fileExtensionFormatted = "*."
-        for i in range(0, getMaxLen(fileExtension)):
-            formatted = "["
-            for extension in  fileExtension:
-                if len(extension) > i:
-                    formatted += extension[i]
-            formatted += "]"
-            fileExtensionFormatted += formatted
-        print("Using " + fileExtensionFormatted)
-        if password == passwordConfirm:
-            hashObj = SHA256.new(password.encode('utf-8'))
-            hkey = hashObj.digest()
-            result = list(Path(".").rglob(fileExtensionFormatted))
-            for paths in result:
-                with paths.open("rb") as input_file, open(paths.resolve().as_posix() +".enc", "wb") as output_file:
-                    content = ""
-                    for byte in input_file.read():
-                        content += str(byte) + " "
-                    content = content[:-1]
-                    encoded = encrypt(hkey, content)
-                    output_file.write(encoded)
-                    print("Encoded " + paths.resolve().as_posix())
-        else:
-            print("Passwords not matching!")
-            exit()
-    
+        fileExtensions = input("Enter file extensions (jpg png ...): ").split()
+        fileExtensionFormatted = getTargetFiles(fileExtensions)
+        logging.debug("Using " + fileExtensionFormatted)
+        filePaths = list(Path(".").rglob(fileExtensionFormatted))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor: 
+            for filePath in filePaths:
+                executor.submit(encryptFile, *(filePath, password))
+        
     elif mode == 2:
-        password = input("password: ")
-        passwordConfirm = input("confirm password: ")
-        if password == passwordConfirm:
-            hashObj = SHA256.new(password.encode('utf-8'))
-            hkey = hashObj.digest()
-            result = list(Path(".").rglob("*.[eE][nN][cC]"))
-            for paths in result:
-                with paths.open("rb") as input_file, open(paths.resolve().as_posix()[:-4], "wb") as output_file:
-                    decoded = decrypt(hkey, input_file.read())
-                    content = b''
-                    #print(decoded)
-                    #print("Hier wars")
-                    for byte in decoded.split():
-                        #print("Byte: ", end="")
-                        #print(byte)
-                        content += int(byte).to_bytes(1, 'big')
-                    output_file.write(content)
-                    print("Decoded: " + paths.resolve().as_posix()[:-4])
+        filePaths = list(Path(".").rglob("*.[eE][nN][cC]"))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor: 
+            for filePath in filePaths:
+                executor.submit(decryptFile, *(filePath, password))
+        
 
-
-# with open("Meme.jpg", "rb") as input_file, open("Meme2.jpg", "wb") as output_file:
-#     password="hello"
-#     msg = "I love python asdasdasda"
-#     hashObj = SHA256.new(password.encode('utf-8'))                                
-#     hkey = hashObj.digest()
-#     msg = ""
-#     for byte in input_file.read():
-#         msg += str(byte) + " "
-#     msg = msg[:-1]
-#     #debugfile.write(msg + "\n\n\n\n\n\n\n")
-#     encoded = encrypt(hkey, msg)
-#     #print(type(encoded))                                                                                                                                         
-#     output_file.write(encoded)
-
-# with open("Meme2.jpg", "rb") as input_file, open("Meme3.jpg", "wb") as output_file:
-#     password="hello"
-#     msg = "I love python asdasdasda"
-#     hashObj = SHA256.new(password.encode('utf-8'))
-#     hkey = hashObj.digest()
-#     encoded = decrypt(hkey, input_file.read())
-#     #debugfile.write(encoded + "\n\n\n\n\n\n\n")
-#     msg = b''
-#     for byte in encoded.split():
-#         msg += int(byte).to_bytes(1,'big')
-#     #print(bytes(encoded))
-#     #print(type(encoded))
-#     output_file.write(msg)
