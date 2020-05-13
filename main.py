@@ -47,7 +47,6 @@ def pad(msg, BLOCK_SIZE, PAD):
     return msg + PAD * ((BLOCK_SIZE - len(msg) % BLOCK_SIZE) % BLOCK_SIZE)
 
 def encrypt(key, msg):
-    print("Encrypt")
     PAD = b'\0'
     cipher = AES.new(key, AES.MODE_ECB)
     # print("KEY " + str(AES.block_size))
