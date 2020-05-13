@@ -4,6 +4,8 @@ from pathlib import Path
 import logging
 import concurrent.futures
 
+BLOCK_SIZE = 16
+BLOCK_MULTIPLIER = 100
 
 def encryptFile(filePath, password):
     try:
@@ -12,11 +14,11 @@ def encryptFile(filePath, password):
         hkey = hashObj.digest()
         with open(filePath, "rb") as input_file, open(filePath.resolve().as_posix() +".enc", "ab") as output_file:
             content = b''
-            content = input_file.read(16*100)
+            content = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
             
             while content != b'':       
                 output_file.write(encrypt(hkey, content))
-                content = input_file.read(16*100)
+                content = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
 
             logging.info("Encoded " + filePath.resolve().as_posix())
     except Exception as e:
@@ -29,10 +31,10 @@ def decryptFile(filePath, password):
         hashObj = SHA256.new(password.encode('utf-8'))
         hkey = hashObj.digest()
         with filePath.open("rb") as input_file, open(filePath.resolve().as_posix()[:-4], "ab") as output_file:
-            values = input_file.read(16*100)       
+            values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)       
             while values != b'':
                 output_file.write(decrypt(hkey, values))
-                values = input_file.read(16*100)
+                values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
             
         logging.info("Decoded: " + filePath.resolve().as_posix()[:-4])
 
@@ -46,7 +48,6 @@ def pad(msg, BLOCK_SIZE, PAD):
 
 def encrypt(key, msg):
     print("Encrypt")
-    BLOCK_SIZE = 16
     PAD = b'\0'
     cipher = AES.new(key, AES.MODE_ECB)
     # print("KEY " + str(AES.block_size))
