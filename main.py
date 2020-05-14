@@ -102,16 +102,24 @@ if __name__ == "__main__":
     if mode == 1:
         fileExtensions = input("Enter file extensions (jpg png ...): ").split()
         fileExtensionFormatted = getTargetFiles(fileExtensions)
-        logging.debug("Using " + fileExtensionFormatted)
+        #logging.debug("Using " + fileExtensionFormatted)
         filePaths = list(Path(".").rglob(fileExtensionFormatted))
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor: 
             for filePath in filePaths:
                 executor.submit(encryptFile, *(filePath, password))
-        
+        opt = input("Remove unencrypted files (y/n): ")
+        if opt.upper()[0] == "Y":
+            for filePath in filePaths:
+                filePath.unlink()
+
     elif mode == 2:
         filePaths = list(Path(".").rglob("*.[eE][nN][cC]"))
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor: 
             for filePath in filePaths:
                 executor.submit(decryptFile, *(filePath, password))
+        opt = input("Remove encrypted files (y/n): ")
+        if opt.upper()[0] == "Y":
+            for filePath in filePaths:
+                filePath.unlink()
         
 
