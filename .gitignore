@@ -3,3 +3,4 @@
 test*
 *.enc
 *.back
+__pycache__*
