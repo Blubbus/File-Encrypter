@@ -45,14 +45,11 @@ def decryptFile(filePath, password):
         print(e)
     
 def pad(msg, BLOCK_SIZE, PAD):
-    #print("Applied " + str((BLOCK_SIZE - len(msg) % BLOCK_SIZE) % BLOCK_SIZE))
-    #print("len: " + str(len(msg)) + "\n")
     return msg + PAD * ((BLOCK_SIZE - len(msg) % BLOCK_SIZE) % BLOCK_SIZE)
 
 def encrypt(key, msg):
     PAD = b'\0'
     cipher = AES.new(key, AES.MODE_ECB)
-    # print("KEY " + str(AES.block_size))
     result = cipher.encrypt(pad(msg, BLOCK_SIZE, PAD))
     return result
 
@@ -62,10 +59,8 @@ def decrypt(key, msg):
     pt = decipher.decrypt(msg)
     for i in range(len(pt)-1, -1, -1):
         if pt[i] == PAD:
-           # print("HIT")
             pt = pt[:i]
         else:
-            #print("NAH")
             break
     return pt
 
@@ -105,7 +100,6 @@ if __name__ == "__main__":
     if mode == 1:
         fileExtensions = input("Enter file extensions (jpg png ...): ").split()
         fileExtensionFormatted = getTargetFiles(fileExtensions)
-        #logging.debug("Using " + fileExtensionFormatted)
         filePaths = list(Path(".").rglob(fileExtensionFormatted))
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor: 
             for filePath in filePaths:
