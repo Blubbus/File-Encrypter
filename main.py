@@ -13,8 +13,8 @@ def encryptFile(filePath, password):
         logging.info("Started encoding: " + filePath.resolve().as_posix())
         hashObj = SHA256.new(password.encode('utf-8'))
         hkey = hashObj.digest()
-        encryptFilePath = Path(vigenere.encrypt(filePath.name, password) + ".enc")
-        with open(filePath, "rb") as input_file, open(encryptFilePath.resolve().resolve(), "ab") as output_file:
+        encryptFileName = vigenere.encrypt(filePath.name, password) + ".enc"
+        with open(filePath, "rb") as input_file, open(filePath.parent.resolve().as_posix() + "/" + encryptFileName, "ab") as output_file:
             content = b''
             content = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
             
@@ -23,8 +23,8 @@ def encryptFile(filePath, password):
                 content = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
 
             logging.info("Encoded " + filePath.resolve().as_posix())
+            logging.info("To " +filePath.parent.resolve().as_posix()+ "/" + encryptFileName)
     except Exception as e:
-
         print(e)
 
 def decryptFile(filePath, password):
@@ -32,14 +32,15 @@ def decryptFile(filePath, password):
     try:
         hashObj = SHA256.new(password.encode('utf-8'))
         hkey = hashObj.digest()
-        decryptFilePath = Path(vigenere.decrypt(filePath.name, password)[:-4])
-        with filePath.open("rb") as input_file, open(decryptFilePath.resolve().as_posix(), "ab") as output_file:
+        decryptFileName = vigenere.decrypt(filePath.name, password)[:-4]
+        with filePath.open("rb") as input_file, open(filePath.parent.resolve().as_posix() + "/" + decryptFileName, "ab") as output_file:
             values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)       
             while values != b'':
                 output_file.write(decrypt(hkey, values))
                 values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
             
         logging.info("Decoded: " + filePath.resolve().as_posix()[:-4])
+        logging.info("TO: " + filePath.parent.resolve().as_posix() + "/" + decryptFileName)
 
     except Exception as e:
         print(e)
@@ -72,17 +73,17 @@ def getMaxLen(arr):
     return maxLen
 
 def getTargetFiles(fileExtension):
-    fileExtensionFormatted = "*."
+    fileExtensions = []
     if len(fileExtension) == 0:
-        fileExtensionFormatted = "*"
-    for i in range(0, getMaxLen(fileExtension)):
-        formatted = "["
-        for extension in  fileExtension:
-            if len(extension) > i:
-                formatted += extension[i]
-        formatted += "]"
-        fileExtensionFormatted += formatted
-    return fileExtensionFormatted
+        fileExtensions.append("*")
+    else:
+    	for Extension in fileExtension:
+    		fileExtensionFormatted = "*."
+    		for char in Extension:
+    			fileExtensionFormatted += "[" + char + "]"
+    		fileExtensions.append(fileExtensionFormatted)
+
+    return fileExtensions
 
 
 if __name__ == "__main__":
@@ -100,7 +101,10 @@ if __name__ == "__main__":
     if mode == 1:
         fileExtensions = input("Enter file extensions (jpg png ...): ").split()
         fileExtensionFormatted = getTargetFiles(fileExtensions)
-        filePaths = list(Path(".").rglob(fileExtensionFormatted))
+        filePaths = []
+        for fileExtension in fileExtensionFormatted:
+        	filePaths = filePaths + list(Path(".").rglob(fileExtension))
+        
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor: 
             for filePath in filePaths:
                 executor.submit(encryptFile, *(filePath, password))
