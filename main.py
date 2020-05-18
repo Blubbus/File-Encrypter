@@ -22,7 +22,6 @@ def encryptFile(filePath, password):
 
             logging.info("Encoded " + filePath.resolve().as_posix())
     except Exception as e:
-
         print(e)
 
 def decryptFile(filePath, password):
