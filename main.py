@@ -13,8 +13,10 @@ def encryptFile(filePath, password):
         logging.info("Started encoding: " + filePath.resolve().as_posix())
         hashObj = SHA256.new(password.encode('utf-8'))
         hkey = hashObj.digest()
-        encryptFileName = vigenere.encrypt(filePath.name, password) + ".enc"
-        with open(filePath, "rb") as input_file, open(filePath.parent.resolve().as_posix() + "/" + encryptFileName, "ab") as output_file:
+        encryptPath = Path(filePath.parent.resolve().as_posix() + "/" + vigenere.encrypt(filePath.name, password) + ".enc")
+        if encryptPath.exists():
+            encryptPath.unlink()
+        with open(filePath, "rb") as input_file, encryptPath.open("ab") as output_file:
             content = b''
             content = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
             
@@ -23,7 +25,7 @@ def encryptFile(filePath, password):
                 content = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
 
             logging.info("Encoded " + filePath.resolve().as_posix())
-            logging.info("To " +filePath.parent.resolve().as_posix()+ "/" + encryptFileName)
+            logging.info("To " +encryptPath.resolve().as_posix())
     except Exception as e:
         print(e)
 
@@ -32,15 +34,15 @@ def decryptFile(filePath, password):
     try:
         hashObj = SHA256.new(password.encode('utf-8'))
         hkey = hashObj.digest()
-        decryptFileName = vigenere.decrypt(filePath.name, password)[:-4]
-        with filePath.open("rb") as input_file, open(filePath.parent.resolve().as_posix() + "/" + decryptFileName, "ab") as output_file:
+        decryptFilePath = Path(filePath.parent.resolve().as_posix() + "/" + vigenere.decrypt(filePath.name, password)[:-4])
+        with filePath.open("rb") as input_file, decryptFilePath.open("ab") as output_file:
             values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)       
             while values != b'':
                 output_file.write(decrypt(hkey, values))
                 values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
             
         logging.info("Decoded: " + filePath.resolve().as_posix()[:-4])
-        logging.info("TO: " + filePath.parent.resolve().as_posix() + "/" + decryptFileName)
+        logging.info("TO: " + decryptFilePath.resolve().as_posix() )
 
     except Exception as e:
         print(e)
@@ -90,10 +92,15 @@ if __name__ == "__main__":
     format = "%(asctime)s: %(message)s"
     logging.basicConfig(format=format, level=logging.INFO,
                         datefmt="%H:%M:%S")
-    print("(1) - encrypt\n(2) - decrypt")
+    print("(1) - encrypt\n(2) - decrypt\n(3) - remove .enc files\n(4) - remove other files")
     mode = int(input("---> "))
-    password = input("password: ")
-    passwordConfirm = input("confirm password: ")
+    password = str()
+    passwordConfirm = str()
+
+    if mode == 1 or mode == 2:
+        password = input("password: ")
+        passwordConfirm = input("confirm password: ")
+        
     if password != passwordConfirm:
         logging.error("Passwords not matching")
         exit()
@@ -122,5 +129,18 @@ if __name__ == "__main__":
         if opt.upper()[0] == "Y":
             for filePath in filePaths:
                 filePath.unlink()
+    elif mode == 3:
+        filePaths = list(Path(".").rglob("*.[eE][nN][cC]"))
+        for filePath in filePaths:
+                filePath.unlink()
+
+    elif mode == 4:
+        fileExtensions = input("Enter file extensions (jpg png ...): ").split()
+        fileExtensionFormatted = getTargetFiles(fileExtensions)
+        filePaths = []
+        for fileExtension in fileExtensionFormatted:
+        	filePaths = filePaths + list(Path(".").rglob(fileExtension))  
+        for filePath in filePaths:
+            filePath.unlink()       
         
 
