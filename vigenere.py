@@ -1,37 +1,23 @@
-import re
-import string
+global ALPHABET
+ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz."
 
-alphabets = "abcdefghijklmnopqrstuvwxyz" # this is the english letters
-def encrypt(p, k):
-    c = ""
-    kpos = [] # return the index of characters ex: if k='d' then kpos= 3
-    for x in k:
-       # kpos += alphabets.find(x) #change the int value to string
-        kpos.append(alphabets.find(x))
-    i = 0
-    for x in p:
-      if i == len(kpos):
-          i = 0
-      pos = alphabets.find(x) + kpos[i] #find the number or index of the character and perform the shift with the key
-      print(pos)
-      if pos > 25:
-          pos = pos-26               # check you exceed the limit
-      c += alphabets[pos].capitalize()  #because the cipher text always capital letters
-      i +=1
-    return c
+def generateKey(length, key):
+    retKey = str()
+    for i in range(length):
+        retKey += key[i % len(key)]
+    return retKey
 
-def decrypt(c, k):
-    p = ""
-    kpos = []
-    for x in k:
-        kpos.append(alphabets.find(x))
-    i = 0
-    for x in c:
-      if i == len(kpos):
-          i = 0
-      pos = alphabets.find(x.lower()) - kpos[i]
-      if pos < 0:
-          pos = pos + 26
-      p += alphabets[pos].lower()
-      i +=1
-    return p
+def encrypt(msg, key):
+    key = generateKey(len(msg), key)
+    ciphertext = "E"
+    for index, char in enumerate(msg):
+        ciphertext += ALPHABET[(ALPHABET.find(key[index]) + ALPHABET.find(char)) % len(ALPHABET)]
+    return ciphertext    
+
+def decrypt(ciphertext, key):
+    key = generateKey(len(ciphertext), key)
+    msg = str()
+    ciphertext = ciphertext[1:]
+    for index, char in enumerate(ciphertext):
+        msg += ALPHABET[(ALPHABET.find(char) - ALPHABET.find(key[index])) % len(ALPHABET)]
+    return msg    
