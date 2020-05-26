@@ -3,17 +3,40 @@ from Crypto.Hash import SHA256
 from pathlib import Path
 import logging
 import concurrent.futures
-import vigenere
 
 BLOCK_SIZE = 16
 BLOCK_MULTIPLIER = 100
+
+global ALPHABET
+ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.1234567890"
+
+def generateKey(length, key):
+    retKey = str()
+    for i in range(length):
+        retKey += key[i % len(key)]
+    return retKey
+
+def vencrypt(msg, key):
+    key = generateKey(len(msg), key)
+    ciphertext = "E"
+    for index, char in enumerate(msg):
+        ciphertext += ALPHABET[(ALPHABET.find(key[index]) + ALPHABET.find(char)) % len(ALPHABET)]
+    return ciphertext    
+
+def vdecrypt(ciphertext, key):
+    key = generateKey(len(ciphertext), key)
+    msg = str()
+    ciphertext = ciphertext[1:]
+    for index, char in enumerate(ciphertext):
+        msg += ALPHABET[(ALPHABET.find(char) - ALPHABET.find(key[index])) % len(ALPHABET)]
+    return msg    
 
 def encryptFile(filePath, password):
     try:
         logging.info("Started encoding: " + filePath.resolve().as_posix())
         hashObj = SHA256.new(password.encode('utf-8'))
         hkey = hashObj.digest()
-        encryptPath = Path(filePath.parent.resolve().as_posix() + "/" + vigenere.encrypt(filePath.name, password) + ".enc")
+        encryptPath = Path(filePath.parent.resolve().as_posix() + "/" + vencrypt(filePath.name, password) + ".enc")
         if encryptPath.exists():
             encryptPath.unlink()
         with open(filePath, "rb") as input_file, encryptPath.open("ab") as output_file:
@@ -34,7 +57,7 @@ def decryptFile(filePath, password):
     try:
         hashObj = SHA256.new(password.encode('utf-8'))
         hkey = hashObj.digest()
-        decryptFilePath = Path(filePath.parent.resolve().as_posix() + "/" + vigenere.decrypt(filePath.name, password)[:-4])
+        decryptFilePath = Path(filePath.parent.resolve().as_posix() + "/" + vdecrypt(filePath.name, password)[:-4])
         with filePath.open("rb") as input_file, decryptFilePath.open("ab") as output_file:
             values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)       
             while values != b'':
@@ -86,7 +109,6 @@ def getTargetFiles(fileExtension):
     		fileExtensions.append(fileExtensionFormatted)
 
     return fileExtensions
-
 
 if __name__ == "__main__":
     format = "%(asctime)s: %(message)s"
