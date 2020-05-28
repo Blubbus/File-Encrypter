@@ -58,6 +58,8 @@ def decryptFile(filePath, password):
         hashObj = SHA256.new(password.encode('utf-8'))
         hkey = hashObj.digest()
         decryptFilePath = Path(filePath.parent.resolve().as_posix() + "/" + vdecrypt(filePath.name, password)[:-4])
+        if decryptFilePath.exists():
+            decryptFilePath.unlink()
         with filePath.open("rb") as input_file, decryptFilePath.open("ab") as output_file:
             values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)       
             while values != b'':
