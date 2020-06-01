@@ -3,12 +3,27 @@ from Crypto.Hash import SHA256
 from pathlib import Path
 import logging
 import concurrent.futures
+import sys
+import getopt
 
 BLOCK_SIZE = 16
 BLOCK_MULTIPLIER = 100
 
 global ALPHABET
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.1234567890"
+
+maxWorker = 10
+
+helpText = '''Usage: python main.py [args] fileExtension fileExtension ...
+Arguments:  -r : deletes en- or decrypted files after use
+            -m : set mode:  1- encrypt
+                            2- decrypt 
+                            3- deletes encrypted files
+                            4- deletes files with extensions
+            -p : sets password no space allowed
+            -w : sets max number of threads
+            '''
+version = "1.1d"
 
 def generateKey(length, key):
     retKey = str()
@@ -112,59 +127,117 @@ def getTargetFiles(fileExtension):
 
     return fileExtensions
 
+def generateEncryptThreads(fileExtensions, password, removeFiles):
+    fileExtensionFormatted = getTargetFiles(fileExtensions)
+    filePaths = []
+    for fileExtension in fileExtensionFormatted:
+        filePaths = filePaths + list(Path(".").rglob(fileExtension))
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=maxWorker) as executor: 
+        for filePath in filePaths:
+            executor.submit(encryptFile, *(filePath, password))
+    if removeFiles:
+        for filePath in filePaths:
+            filePath.unlink()
+
+def generateDecryptThreads(password, removeFiles):
+    filePaths = list(Path(".").rglob("*.[eE][nN][cC]"))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=maxWorker) as executor: 
+        for filePath in filePaths:
+            executor.submit(decryptFile, *(filePath, password))
+    if removeFiles:
+        for filePath in filePaths:
+            filePath.unlink()
+
+def removeEncryptedFiles():
+    filePaths = list(Path(".").rglob("*.[eE][nN][cC]"))
+    for filePath in filePaths:
+            filePath.unlink()
+
+def removeExFiles(fileExtensions):
+    fileExtensionFormatted = getTargetFiles(fileExtensions)
+    filePaths = []
+    for fileExtension in fileExtensionFormatted:
+        filePaths = filePaths + list(Path(".").rglob(fileExtension))  
+    for filePath in filePaths:
+        filePath.unlink()      
+
 if __name__ == "__main__":
     format = "%(asctime)s: %(message)s"
     logging.basicConfig(format=format, level=logging.INFO,
                         datefmt="%H:%M:%S")
-    print("(1) - encrypt\n(2) - decrypt\n(3) - remove .enc files\n(4) - remove other files")
-    mode = int(input("---> "))
-    password = str()
-    passwordConfirm = str()
+    if len(sys.argv[1:]) < 1:
 
-    if mode == 1 or mode == 2:
-        password = input("password: ")
-        passwordConfirm = input("confirm password: ")
+        print("(1) - encrypt\n(2) - decrypt\n(3) - remove .enc files\n(4) - remove other files")
+        mode = int(input("---> "))
+        password = str()
+        passwordConfirm = str()
+
+        if mode == 1 or mode == 2:
+            password = input("password: ")
+            passwordConfirm = input("confirm password: ")
+            
+        if password != passwordConfirm:
+            logging.error("Passwords not matching")
+            exit()
+
+        if mode == 1:
+            fileExtensions = input("Enter file extensions (jpg png ...): ").split()
+            removeFiles = input("Remove unencrypted files afterwards(Y): ")
+            if removeFiles[0].upper() == 'Y':
+                removeFiles = True
+            else:
+                removeFiles = False
+            generateEncryptThreads(fileExtensions, password, removeFiles)
+
+        elif mode == 2:
+            removeFiles = input("Remove encrypted files afterwards(Y): ")
+            if removeFiles[0].upper() == 'Y':
+                removeFiles = True
+            else:
+                removeFiles = False
+            generateDecryptThreads(password, removeFiles)
+
+        elif mode == 3:
+            removeEncryptedFiles()
+
+        elif mode == 4:
+            fileExtensions = input("Enter file extensions (jpg png ...): ").split()
+            removeExFiles(fileExtensions)
+             
+    else:
+        removeFiles = False
+        password = ""
+        mode = 0
+        opts, args = getopt.getopt(sys.argv[1:], "rm:p:w:vh")
         
-    if password != passwordConfirm:
-        logging.error("Passwords not matching")
-        exit()
+        for opt, arg in opts:
+            if opt == '-r':
+                removeFiles = True
+            elif opt == '-m':
+                mode = int(arg)
+            elif opt == '-w':
+                maxWorker = int(arg)
+            elif opt == '-p':
+                password = arg
+            elif opt == '-h':
+                print(helpText)
+                exit()
 
-    if mode == 1:
-        fileExtensions = input("Enter file extensions (jpg png ...): ").split()
-        fileExtensionFormatted = getTargetFiles(fileExtensions)
-        filePaths = []
-        for fileExtension in fileExtensionFormatted:
-        	filePaths = filePaths + list(Path(".").rglob(fileExtension))
+        if mode == 0 or (password == "" and mode in (1,4)):
+            print("Missing arguments!\nType -h as argument to get help Page.")
+            exit()
+
+        if mode == 1:
+            generateEncryptThreads(args, password, removeFiles)
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor: 
-            for filePath in filePaths:
-                executor.submit(encryptFile, *(filePath, password))
-        opt = input("Remove unencrypted files (y/n): ")
-        if opt.upper()[0] == "Y":
-            for filePath in filePaths:
-                filePath.unlink()
-
-    elif mode == 2:
-        filePaths = list(Path(".").rglob("*.[eE][nN][cC]"))
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor: 
-            for filePath in filePaths:
-                executor.submit(decryptFile, *(filePath, password))
-        opt = input("Remove encrypted files (y/n): ")
-        if opt.upper()[0] == "Y":
-            for filePath in filePaths:
-                filePath.unlink()
-    elif mode == 3:
-        filePaths = list(Path(".").rglob("*.[eE][nN][cC]"))
-        for filePath in filePaths:
-                filePath.unlink()
-
-    elif mode == 4:
-        fileExtensions = input("Enter file extensions (jpg png ...): ").split()
-        fileExtensionFormatted = getTargetFiles(fileExtensions)
-        filePaths = []
-        for fileExtension in fileExtensionFormatted:
-        	filePaths = filePaths + list(Path(".").rglob(fileExtension))  
-        for filePath in filePaths:
-            filePath.unlink()       
+        elif mode == 2:
+            generateDecryptThreads(password, removeFiles)
         
+        elif mode == 3:
+            removeEncryptedFiles()
+        
+        elif mode == 4:
+            removeExFiles(args)
+
 
