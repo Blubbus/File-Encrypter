@@ -1,9 +1,9 @@
 # File Encypher
 Simple python program to decrypt and encrypt files.
 
-Especially large amount of same file types are nice to decrypt.
+Especially large amount of same file types are nice to encrypt.
 
-It's mostly for practising python programming and working with GitHub and not intended to use.
+It's mostly for practising python programming and working with GitHub and not intended for use.
 
 Can be used by directly opening or with commandline arguments. Execute with -h for more info
 
