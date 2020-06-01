@@ -19,7 +19,8 @@ Arguments:  -r : deletes en- or decrypted files after use
             -m : set mode:  1- encrypt
                             2- decrypt 
                             3- deletes encrypted files
-                            4- deletes files with extensions
+                            4- deletes files with extensions if empty everything except .enc and .py
+                            5- encrypt one file
             -p : sets password no space allowed
             -w : sets max number of threads
             '''
@@ -119,11 +120,11 @@ def getTargetFiles(fileExtension):
     if len(fileExtension) == 0:
         fileExtensions.append("*")
     else:
-    	for Extension in fileExtension:
-    		fileExtensionFormatted = "*."
-    		for char in Extension:
-    			fileExtensionFormatted += "[" + char + "]"
-    		fileExtensions.append(fileExtensionFormatted)
+        for Extension in fileExtension:
+            fileExtensionFormatted = "*."
+            for char in Extension:
+                fileExtensionFormatted += "[" + char + "]"
+            fileExtensions.append(fileExtensionFormatted)
 
     return fileExtensions
 
@@ -224,7 +225,7 @@ if __name__ == "__main__":
                 print(helpText)
                 exit()
 
-        if mode == 0 or (password == "" and mode in (1,4)):
+        if mode == 0 or (password == "" and mode in (1,2,5)):
             print("Missing arguments!\nType -h as argument to get help Page.")
             exit()
 
@@ -238,6 +239,24 @@ if __name__ == "__main__":
             removeEncryptedFiles()
         
         elif mode == 4:
-            removeExFiles(args)
+            if args == "":
+                filePaths = list(Path(".").rglob("*"))
+                removePaths = list()
+                for index, filePath in enumerate(filePaths):
+                    if not ".enc" in filePath and not ".py" in filePath:
+                        removePaths.append(filePath)
+                try:
+                    for removeFilePath in removePaths:
+                        removeFilePath.unlink()
+
+                except Exception as e:
+                    print(e)
+                
+            else:    
+                removeExFiles(args)
+        
+        elif mode == 5:
+            encryptFile(Path(args), password)
+            
 
 
