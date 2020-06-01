@@ -21,6 +21,7 @@ Arguments:  -r : deletes en- or decrypted files after use
                             3- deletes encrypted files
                             4- deletes files with extensions
             -p : sets password no space allowed
+            -w : sets max number of threads
             '''
 version = "1.1d"
 
@@ -208,21 +209,24 @@ if __name__ == "__main__":
         removeFiles = False
         password = ""
         mode = 0
-        opts, args = getopt.getopt(sys.argv[1:], "rm:p:vh")
+        opts, args = getopt.getopt(sys.argv[1:], "rm:p:w:vh")
         
         for opt, arg in opts:
             if opt == '-r':
                 removeFiles = True
             elif opt == '-m':
-                mode = arg
+                mode = int(arg)
+            elif opt == '-w':
+                maxWorker = int(arg)
             elif opt == '-p':
                 password = arg
             elif opt == '-h':
                 print(helpText)
                 exit()
 
-        if mode == 0 or password == "":
+        if mode == 0 or (password == "" and mode in (1,4)):
             print("Missing arguments!\nType -h as argument to get help Page.")
+            exit()
 
         if mode == 1:
             generateEncryptThreads(args, password, removeFiles)
