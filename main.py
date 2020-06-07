@@ -56,12 +56,23 @@ def encryptFile(filePath, password):
         if encryptPath.exists():
             encryptPath.unlink()
         with open(filePath, "rb") as input_file, encryptPath.open("ab") as output_file:
-            content = b''
-            content = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
+            content = list()
+            values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
 
-            while content != b'':
-                output_file.write(encrypt(hkey, content))
-                content = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
+            while values != b'':
+                content.append(values)
+                values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
+            results = list()
+            with concurrent.futures.ThreadPoolExecutor(max_workers=maxWorker) as executor:
+                futures = list()
+                for values in content:
+                   future = executor.submit(encrypt, *(hkey, values))
+                   futures.append(future)
+                for future in futures:
+                    results.append(future.result())
+
+            for result in results:
+                output_file.write(result)
 
             logging.info("Encoded " + filePath.resolve().as_posix())
             logging.info("To " +encryptPath.resolve().as_posix())
@@ -77,10 +88,22 @@ def decryptFile(filePath, password):
         if decryptFilePath.exists():
             decryptFilePath.unlink()
         with filePath.open("rb") as input_file, decryptFilePath.open("ab") as output_file:
+            content = list()
             values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
             while values != b'':
-                output_file.write(decrypt(hkey, values))
+                content.append(values)
                 values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
+            results = list()
+            with concurrent.futures.ThreadPoolExecutor(max_workers=maxWorker) as executor:
+                futures = list()
+                for values in content:
+                   future = executor.submit(decrypt, *(hkey, values))
+                   futures.append(future)
+                for future in futures:
+                    results.append(future.result())
+
+            for result in results:
+                output_file.write(result)
 
         logging.info("Decoded: " + filePath.resolve().as_posix()[:-4])
         logging.info("TO: " + decryptFilePath.resolve().as_posix() )
@@ -193,7 +216,7 @@ if __name__ == "__main__":
 
         elif mode == 2:
             removeFiles = input("Remove encrypted files afterwards(Y): ")
-            if removeFiles[0].upper() == 'Y':
+            if len(removeFiles) >= 1 and removeFiles[0].upper() == 'Y':
                 removeFiles = True
             else:
                 removeFiles = False
