@@ -17,7 +17,7 @@ maxWorker = 10
 helpText = '''Usage: python main.py [args] fileExtension fileExtension ...
 Arguments:  -r : deletes en- or decrypted files after use
             -m : set mode:  1- encrypt
-                            2- decrypt 
+                            2- decrypt
                             3- deletes encrypted files
                             4- deletes files with extensions if empty everything except .enc and .py
                             5- encrypt one file
@@ -37,7 +37,7 @@ def vencrypt(msg, key):
     ciphertext = "E"
     for index, char in enumerate(msg):
         ciphertext += ALPHABET[(ALPHABET.find(key[index]) + ALPHABET.find(char)) % len(ALPHABET)]
-    return ciphertext    
+    return ciphertext
 
 def vdecrypt(ciphertext, key):
     key = generateKey(len(ciphertext), key)
@@ -45,7 +45,7 @@ def vdecrypt(ciphertext, key):
     ciphertext = ciphertext[1:]
     for index, char in enumerate(ciphertext):
         msg += ALPHABET[(ALPHABET.find(char) - ALPHABET.find(key[index])) % len(ALPHABET)]
-    return msg    
+    return msg
 
 def encryptFile(filePath, password):
     try:
@@ -58,8 +58,8 @@ def encryptFile(filePath, password):
         with open(filePath, "rb") as input_file, encryptPath.open("ab") as output_file:
             content = b''
             content = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
-            
-            while content != b'':       
+
+            while content != b'':
                 output_file.write(encrypt(hkey, content))
                 content = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
 
@@ -77,17 +77,17 @@ def decryptFile(filePath, password):
         if decryptFilePath.exists():
             decryptFilePath.unlink()
         with filePath.open("rb") as input_file, decryptFilePath.open("ab") as output_file:
-            values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)       
+            values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
             while values != b'':
                 output_file.write(decrypt(hkey, values))
                 values = input_file.read(BLOCK_SIZE*BLOCK_MULTIPLIER)
-            
+
         logging.info("Decoded: " + filePath.resolve().as_posix()[:-4])
         logging.info("TO: " + decryptFilePath.resolve().as_posix() )
 
     except Exception as e:
         print(e)
-    
+
 def pad(msg, BLOCK_SIZE, PAD):
     return msg + PAD * ((BLOCK_SIZE - len(msg) % BLOCK_SIZE) % BLOCK_SIZE)
 
@@ -98,7 +98,7 @@ def encrypt(key, msg):
     return result
 
 def decrypt(key, msg):
-    PAD = b'\0'                         
+    PAD = b'\0'
     decipher = AES.new(key, AES.MODE_ECB)
     pt = decipher.decrypt(msg)
     for i in range(len(pt)-1, -1, -1):
@@ -133,8 +133,8 @@ def generateEncryptThreads(fileExtensions, password, removeFiles):
     filePaths = []
     for fileExtension in fileExtensionFormatted:
         filePaths = filePaths + list(Path(".").rglob(fileExtension))
-    
-    with concurrent.futures.ThreadPoolExecutor(max_workers=maxWorker) as executor: 
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=maxWorker) as executor:
         for filePath in filePaths:
             executor.submit(encryptFile, *(filePath, password))
     if removeFiles:
@@ -143,7 +143,7 @@ def generateEncryptThreads(fileExtensions, password, removeFiles):
 
 def generateDecryptThreads(password, removeFiles):
     filePaths = list(Path(".").rglob("*.[eE][nN][cC]"))
-    with concurrent.futures.ThreadPoolExecutor(max_workers=maxWorker) as executor: 
+    with concurrent.futures.ThreadPoolExecutor(max_workers=maxWorker) as executor:
         for filePath in filePaths:
             executor.submit(decryptFile, *(filePath, password))
     if removeFiles:
@@ -159,9 +159,9 @@ def removeExFiles(fileExtensions):
     fileExtensionFormatted = getTargetFiles(fileExtensions)
     filePaths = []
     for fileExtension in fileExtensionFormatted:
-        filePaths = filePaths + list(Path(".").rglob(fileExtension))  
+        filePaths = filePaths + list(Path(".").rglob(fileExtension))
     for filePath in filePaths:
-        filePath.unlink()      
+        filePath.unlink()
 
 if __name__ == "__main__":
     format = "%(asctime)s: %(message)s"
@@ -177,7 +177,7 @@ if __name__ == "__main__":
         if mode == 1 or mode == 2:
             password = input("password: ")
             passwordConfirm = input("confirm password: ")
-            
+
         if password != passwordConfirm:
             logging.error("Passwords not matching")
             exit()
@@ -205,13 +205,13 @@ if __name__ == "__main__":
         elif mode == 4:
             fileExtensions = input("Enter file extensions (jpg png ...): ").split()
             removeExFiles(fileExtensions)
-             
+
     else:
         removeFiles = False
         password = ""
         mode = 0
         opts, args = getopt.getopt(sys.argv[1:], "rm:p:w:vh")
-        
+
         for opt, arg in opts:
             if opt == '-r':
                 removeFiles = True
@@ -231,19 +231,20 @@ if __name__ == "__main__":
 
         if mode == 1:
             generateEncryptThreads(args, password, removeFiles)
-        
+
         elif mode == 2:
             generateDecryptThreads(password, removeFiles)
-        
+
         elif mode == 3:
             removeEncryptedFiles()
-        
+
         elif mode == 4:
-            if args == "":
-                filePaths = list(Path(".").rglob("*"))
+            # print(args)
+            if args == []:
+                filePaths = list(Path(".").rglob("*.*"))
                 removePaths = list()
                 for index, filePath in enumerate(filePaths):
-                    if not ".enc" in filePath and not ".py" in filePath:
+                    if not ".enc" in filePath.name and not ".py" in filePath.name:
                         removePaths.append(filePath)
                 try:
                     for removeFilePath in removePaths:
@@ -251,12 +252,9 @@ if __name__ == "__main__":
 
                 except Exception as e:
                     print(e)
-                
-            else:    
+
+            else:
                 removeExFiles(args)
-        
+
         elif mode == 5:
             encryptFile(Path(args), password)
-            
-
-
