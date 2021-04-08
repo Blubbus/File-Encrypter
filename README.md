@@ -1,4 +1,4 @@
-# File Encrypher
+# File Encrypter
 Simple python program to decrypt and encrypt files.
 
 Especially large amount of same file types are nice to encrypt.
