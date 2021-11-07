@@ -128,11 +128,11 @@ def getTargetFiles(fileExtension):
 
     return fileExtensions
 
-def generateEncryptThreads(fileExtensions, password, removeFiles):
+def generateEncryptThreads(fileExtensions, password, removeFiles, path):
     fileExtensionFormatted = getTargetFiles(fileExtensions)
     filePaths = []
     for fileExtension in fileExtensionFormatted:
-        filePaths = filePaths + list(Path(".").rglob(fileExtension))
+        filePaths = filePaths + list(Path(path).rglob(fileExtension))
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=maxWorker) as executor:
         for filePath in filePaths:
@@ -141,8 +141,8 @@ def generateEncryptThreads(fileExtensions, password, removeFiles):
         for filePath in filePaths:
             filePath.unlink()
 
-def generateDecryptThreads(password, removeFiles):
-    filePaths = list(Path(".").rglob("*.[eE][nN][cC]"))
+def generateDecryptThreads(password, removeFiles, path):
+    filePaths = list(Path(path).rglob("*.[eE][nN][cC]"))
     with concurrent.futures.ThreadPoolExecutor(max_workers=maxWorker) as executor:
         for filePath in filePaths:
             executor.submit(decryptFile, *(filePath, password))
@@ -150,16 +150,16 @@ def generateDecryptThreads(password, removeFiles):
         for filePath in filePaths:
             filePath.unlink()
 
-def removeEncryptedFiles():
-    filePaths = list(Path(".").rglob("*.[eE][nN][cC]"))
+def removeEncryptedFiles(path):
+    filePaths = list(Path(path).rglob("*.[eE][nN][cC]"))
     for filePath in filePaths:
             filePath.unlink()
 
-def removeExFiles(fileExtensions):
+def removeExFiles(fileExtensions, path):
     fileExtensionFormatted = getTargetFiles(fileExtensions)
     filePaths = []
     for fileExtension in fileExtensionFormatted:
-        filePaths = filePaths + list(Path(".").rglob(fileExtension))
+        filePaths = filePaths + list(Path(path).rglob(fileExtension))
     for filePath in filePaths:
         filePath.unlink()
 
@@ -189,7 +189,8 @@ if __name__ == "__main__":
                 removeFiles = True
             else:
                 removeFiles = False
-            generateEncryptThreads(fileExtensions, password, removeFiles)
+            path = input("Select folder to encrypt (\".\" for current dir): ")
+            generateEncryptThreads(fileExtensions, password, removeFiles, path)
 
         elif mode == 2:
             removeFiles = input("Remove encrypted files afterwards(Y): ")
@@ -197,20 +198,26 @@ if __name__ == "__main__":
                 removeFiles = True
             else:
                 removeFiles = False
-            generateDecryptThreads(password, removeFiles)
+            path = input("Select folder to decrypt (\".\" for current dir): ")
+
+            generateDecryptThreads(password, removeFiles, path)
 
         elif mode == 3:
-            removeEncryptedFiles()
+            path = input("Select folder for removal (\".\" for current dir): ")
+
+            removeEncryptedFiles(path)
 
         elif mode == 4:
             fileExtensions = input("Enter file extensions (jpg png ...): ").split()
-            removeExFiles(fileExtensions)
+            path = input("Select folder for removal (\".\" for current dir): ")
+
+            removeExFiles(fileExtensions, path)
 
     else:
         removeFiles = False
         password = ""
         mode = 0
-        opts, args = getopt.getopt(sys.argv[1:], "rm:p:w:vh")
+        opts, args = getopt.getopt(sys.argv[1:], "rm:p:w:vd:h")
 
         for opt, arg in opts:
             if opt == '-r':
@@ -221,6 +228,8 @@ if __name__ == "__main__":
                 maxWorker = int(arg)
             elif opt == '-p':
                 password = arg
+            elif opt == '-d':
+                path = arg
             elif opt == '-h':
                 print(helpText)
                 exit()
@@ -230,10 +239,10 @@ if __name__ == "__main__":
             exit()
 
         if mode == 1:
-            generateEncryptThreads(args, password, removeFiles)
+            generateEncryptThreads(args, password, removeFiles, path)
 
         elif mode == 2:
-            generateDecryptThreads(password, removeFiles)
+            generateDecryptThreads(password, removeFiles, path)
 
         elif mode == 3:
             removeEncryptedFiles()
@@ -241,7 +250,7 @@ if __name__ == "__main__":
         elif mode == 4:
             # print(args)
             if args == []:
-                filePaths = list(Path(".").rglob("*.*"))
+                filePaths = list(Path(path).rglob("*.*"))
                 removePaths = list()
                 for index, filePath in enumerate(filePaths):
                     if not ".enc" in filePath.name and not ".py" in filePath.name:
